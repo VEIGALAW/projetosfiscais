@@ -80,7 +80,8 @@
     alvo: svg('<circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.5"/>'),
   };
 
-  const SELO = `<svg class="selo" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#c9a45c"/><text x="20" y="26.5" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="700" fill="#0c2340" letter-spacing="-.5">VP</text></svg>`;
+  const SELO = '';
+  const ROMANOS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 
   const STATUS = {
     critico: { rotulo: 'Crítico', ordem: 0 },
@@ -107,8 +108,12 @@
     nomes.length
       ? nomes.map((n) => `<span class="pessoa-inline">${avatar(n, 'mini')}${esc(nomeCurto(n))}</span>`).join('')
       : `<span class="sem-dono">${ICONES.pessoa}Sem responsável</span>`;
-  const selo = (status, n) =>
-    `<span class="selo-dias st-${status}" data-dica="${STATUS[status].rotulo}${n != null ? ` · ${dias(n)} sem avanço` : ''}">${ICONES[status]}<b class="num">${n ?? '—'}</b><small>${n === 1 ? 'dia' : 'dias'}</small></span>`;
+  const selo = (status, n, rotulo = STATUS[status].rotulo) =>
+    `<span class="selo-dias st-${status}" data-dica="${STATUS[status].rotulo}${n != null ? ` · ${dias(n)} sem avanço` : ''}">${ICONES[status]}${rotulo}${n != null ? `<span class="sep">·</span><b class="num">${n}</b><small>${n === 1 ? 'dia' : 'dias'}</small>` : ''}</span>`;
+  const nomesCurtos = (nomes, max = 2) =>
+    nomes.length
+      ? `<span class="nomes" data-dica="${esc(nomes.map(nomeCurto).join(', '))}">${esc(nomes.slice(0, max).map(nomeCurto).join(' · '))}${nomes.length > max ? ` +${nomes.length - max}` : ''}</span>`
+      : `<span class="sem-dono" data-dica="Etapa sem responsável no Monday">${ICONES.pessoa}Sem responsável</span>`;
 
   // ---------- Estado da tela ----------
 
@@ -167,7 +172,7 @@
     app.innerHTML = `
       <div class="acesso">
         <div class="acesso-lado">
-          <div class="acesso-marca">${SELO}<span>Veiga Partners</span></div>
+          <div class="acesso-marca"><span>Veiga Partners</span></div>
           <h1>Projetos Fiscais</h1>
           <p>Visão executiva da carteira de levantamento de créditos: onde cada projeto está, quem está com ele e o que está parado.</p>
         </div>
@@ -267,29 +272,6 @@
 
   // ---------- Cabeçalho e resumo executivo ----------
 
-  function donut(contagem, total) {
-    const r = 62;
-    const c = 2 * Math.PI * r;
-    const gap = total > 1 ? 3 : 0;
-    let acumulado = 0;
-    const arcos = ['critico', 'atencao', 'em_dia']
-      .filter((s) => contagem[s])
-      .map((s) => {
-        const tam = (contagem[s] / total) * c;
-        const arco = `<circle class="arco ${s}" r="${r}" cx="80" cy="80" stroke-dasharray="${Math.max(0, tam - gap)} ${c}" stroke-dashoffset="${-acumulado}" data-dica="${STATUS[s].rotulo}: ${plural(contagem[s], 'projeto', 'projetos')}"/>`;
-        acumulado += tam;
-        return arco;
-      })
-      .join('');
-    return `
-      <svg class="donut" viewBox="0 0 160 160" role="img" aria-label="Situação dos ${total} projetos ativos">
-        <circle class="trilho" r="${r}" cx="80" cy="80"/>
-        <g transform="rotate(-90 80 80)">${arcos}</g>
-        <text x="80" y="78" text-anchor="middle" class="donut-num">${total}</text>
-        <text x="80" y="100" text-anchor="middle" class="donut-rot">projetos ativos</text>
-      </svg>`;
-  }
-
   function kpis(painel) {
     const todos = painel.projetos;
     const ativos = ativosDe(todos);
@@ -337,10 +319,18 @@
         ? 'Carteira em dia: nenhum projeto parado há mais de ' + cr + ' dias.'
         : `<em>${contagem.critico} de ${ativos.length}</em> projetos estão parados há mais de ${cr} dias.`;
 
+    const carteira = ativos.length
+      ? `<div class="carteira" role="img" aria-label="${ativos.length} projetos ativos: ${['critico', 'atencao', 'em_dia'].map((s) => `${STATUS[s].rotulo} ${contagem[s]}`).join(', ')}">
+            <div class="carteira-topo"><span class="rotulo">Carteira ativa</span><b class="num">${ativos.length}</b></div>
+            <div class="carteira-barra">${['critico', 'atencao', 'em_dia'].filter((s) => contagem[s]).map((s) => `<span class="${s}" style="flex:${contagem[s]}" data-dica="${STATUS[s].rotulo}: ${plural(contagem[s], 'projeto', 'projetos')}"></span>`).join('')}</div>
+            <div class="carteira-legenda">${['critico', 'atencao', 'em_dia'].map((s) => `<span class="st-${s}">${ICONES[s]}${STATUS[s].rotulo} <b class="num">${contagem[s]}</b></span>`).join('')}</div>
+          </div>`
+      : '';
+
     return `
       <header class="topo">
         <div class="topo-barra">
-          <div class="marca">${SELO}<div><strong>Veiga Partners</strong><span>Projetos Fiscais · Painel executivo</span></div></div>
+          <div class="marca"><span class="mais-selo" aria-hidden="true">+</span><div><strong>Veiga Partners</strong><span>Projetos Fiscais · Painel executivo</span></div></div>
           <div class="topo-acoes">
             <span class="atualizado">${ICONES.relogio}Atualizado ${fmtData.format(gerado)} às ${fmtHora.format(gerado)}</span>
             <button class="icone-botao" type="button" data-acao="tema">${ICONES.tema}<span>${NOME_TEMA[temaAtual()]}</span></button>
@@ -349,18 +339,13 @@
         </div>
         <div class="heroi">
           <div class="heroi-texto">
-            <p class="sobretitulo">${esc(fmtDiaSemana.format(gerado))}</p>
+            <p class="sobretitulo">${esc(fmtDiaSemana.format(gerado))} · Situação da carteira</p>
             <h1>${manchete}</h1>
             <p class="heroi-sub">${ativos.length ? `${pct}% da carteira ativa está travada. O tempo típico sem avanço na etapa atual é de <strong>${dias(med)}</strong>${semDono ? ` e <strong>${plural(semDono, 'projeto está', 'projetos estão')} sem responsável</strong>` : ''}.` : ''}</p>
-            ${kpis(painel)}
           </div>
-          <div class="heroi-grafico">
-            ${donut(contagem, ativos.length || 1)}
-            <div class="donut-legenda">
-              ${['critico', 'atencao', 'em_dia'].map((s) => `<span class="st-${s}">${ICONES[s]}${STATUS[s].rotulo}<b class="num">${contagem[s]}</b></span>`).join('')}
-            </div>
-          </div>
+          ${carteira}
         </div>
+        ${kpis(painel)}
       </header>`;
   }
 
@@ -379,10 +364,10 @@
     return `
       <button type="button" class="card st-${p.status}" data-acao="abrir" data-id="${esc(p.id)}">
         <span class="card-empresa">${esc(p.empresa)}</span>
-        <span class="card-etapa" data-dica="${esc(a ? `${a.nome} · ${ESTADOS[a.estado]}` : 'Concluído')}">${a?.estado === 'parado' ? '<span class="marca-parado">Parado</span> ' : ''}${esc(a?.nome ?? 'Concluído')}</span>
+        <span class="card-etapa" data-dica="${esc(a ? `${a.nome} · ${ESTADOS[a.estado]}` : 'Concluído')}">${esc(a?.nome ?? 'Concluído')}</span>
         <span class="card-rodape">
-          ${a ? avatares(a.responsaveis) : '<span></span>'}
-          ${selo(p.status, p._parado)}
+          ${a ? nomesCurtos(a.responsaveis) : '<span></span>'}
+          ${selo(p.status, p._parado, a?.estado === 'parado' ? 'Parado' : STATUS[p.status].rotulo)}
         </span>
       </button>`;
   }
@@ -400,8 +385,8 @@
             return `
             <section class="coluna-fase" aria-label="${esc(c.nome)}">
               <header>
-                <span class="fase-num">${c.id === 'outras' ? '•' : i + 1}</span>
-                <div><h3>${esc(c.nome)}</h3><span>${plural(c.projetos.length, 'projeto', 'projetos')}${criticos ? ` · ${criticos} crítico${criticos > 1 ? 's' : ''}` : ''}</span></div>
+                <div>${c.id === 'outras' ? '' : `<span class="fase-num">${ROMANOS[i] ?? i + 1}</span>`}<h3>${esc(c.nome)}</h3></div>
+                <span class="conta num" data-dica="${plural(c.projetos.length, 'projeto', 'projetos')}${criticos ? ` · ${criticos} crítico${criticos > 1 ? 's' : ''}` : ''}">${c.projetos.length}${criticos ? ` <span class="st-critico">${ICONES.critico}${criticos}</span>` : ''}</span>
               </header>
               <div class="cards">${c.projetos.map(cartaoProjeto).join('') || '<p class="coluna-vazia">Nenhum projeto nesta fase</p>'}</div>
             </section>`;
@@ -414,9 +399,8 @@
 
   function gargalos(painel) {
     const lista = [...ativosDe(painel.projetos)].sort((a, b) => (b._parado ?? -1) - (a._parado ?? -1)).slice(0, 8);
-    const maximo = Math.max(1, ...lista.map((p) => p._parado ?? 0));
     return `
-      <section class="cartao painel-bloco">
+      <section class="painel-bloco">
         <div class="bloco-cabecalho">
           <div><h2>Maiores gargalos</h2><p>Projetos há mais tempo sem avanço na etapa atual</p></div>
         </div>
@@ -427,10 +411,8 @@
             <li>
               <button type="button" class="ranking-linha" data-acao="abrir" data-id="${esc(p.id)}">
                 <span class="posicao num">${i + 1}</span>
-                <span class="ranking-nome"><strong>${esc(p.empresa)}</strong><span>${esc(p._atual?.nome ?? '')}</span></span>
-                <span class="ranking-barra"><span class="barra-dias st-${p.status}" style="width:${Math.max(4, ((p._parado ?? 0) / maximo) * 100)}%"></span></span>
-                <span class="ranking-dias num">${p._parado ?? '—'}<small>dias</small></span>
-                ${p._atual ? avatares(p._atual.responsaveis, 2) : ''}
+                <span class="ranking-nome"><strong>${esc(p.empresa)}</strong><span>${esc(p._atual?.nome ?? '')}${p._atual ? ` · ${p._atual.responsaveis.length ? esc(p._atual.responsaveis.map(nomeCurto).join(', ')) : 'sem responsável'}` : ''}</span></span>
+                <span class="ranking-dias num st-${p.status}">${p._parado ?? '—'}<small>dias</small></span>
               </button>
             </li>`,
             )
@@ -453,7 +435,7 @@
     const maximo = Math.max(1, ...linhas.map((l) => l.total));
     const semDono = ativos.filter((p) => p._semDono).length;
     return `
-      <section class="cartao painel-bloco">
+      <section class="painel-bloco">
         <div class="bloco-cabecalho">
           <div><h2>Com quem estão os projetos</h2><p>Projetos ativos por responsável da etapa atual · clique para filtrar</p></div>
         </div>
@@ -462,7 +444,6 @@
             .map(
               (l) => `
             <button type="button" class="pessoa-linha" data-acao="pessoa" data-valor="${esc(l.n)}" aria-pressed="${tela.filtro.pessoa === l.n}">
-              ${avatar(l.n)}
               <span class="pessoa-nome">${esc(nomeCurto(l.n))}</span>
               <span class="pessoa-barra" style="--largura:${(l.total / maximo) * 100}%">
                 ${['critico', 'atencao', 'em_dia'].filter((s) => l.conta[s]).map((s) => `<span class="seg ${s}" style="flex:${l.conta[s]}" data-dica="${esc(nomeCurto(l.n))} · ${STATUS[s].rotulo}: ${plural(l.conta[s], 'projeto', 'projetos')}"></span>`).join('')}
@@ -471,7 +452,7 @@
             </button>`,
             )
             .join('')}
-          ${semDono ? `<button type="button" class="pessoa-linha sem" data-acao="pessoa" data-valor="__sem__" aria-pressed="${tela.filtro.pessoa === '__sem__'}"><span class="avatar vazio">${ICONES.pessoa}</span><span class="pessoa-nome">Sem responsável</span><span class="pessoa-barra" style="--largura:${(semDono / maximo) * 100}%"><span class="seg critico" style="flex:1"></span></span><span class="pessoa-total num">${semDono}</span></button>` : ''}
+          ${semDono ? `<button type="button" class="pessoa-linha sem" data-acao="pessoa" data-valor="__sem__" aria-pressed="${tela.filtro.pessoa === '__sem__'}"><span class="pessoa-nome">Sem responsável</span><span class="pessoa-barra" style="--largura:${(semDono / maximo) * 100}%"><span class="seg critico" style="flex:1"></span></span><span class="pessoa-total num">${semDono}</span></button>` : ''}
         </div>
         <div class="legenda">${['critico', 'atencao', 'em_dia'].map((s) => `<span class="st-${s}">${ICONES[s]}${STATUS[s].rotulo}</span>`).join('')}</div>
       </section>`;
@@ -492,7 +473,7 @@
     const maximo = Math.max(1, ...meses.map((m) => m.projetos.length));
     const total = meses.reduce((s, m) => s + m.projetos.length, 0);
     return `
-      <section class="cartao painel-bloco">
+      <section class="painel-bloco">
         <div class="bloco-cabecalho">
           <div><h2>Entrada de projetos</h2><p>${plural(total, 'projeto iniciado', 'projetos iniciados')} nos últimos 12 meses</p></div>
         </div>
@@ -514,7 +495,7 @@
   function comoLer(painel) {
     const { atencaoAposDias: at, criticoAposDias: cr } = painel.limites;
     return `
-      <section class="cartao painel-bloco como-ler">
+      <section class="painel-bloco como-ler">
         <div class="bloco-cabecalho"><div><h2>Como ler</h2><p>Regras usadas nos números acima</p></div></div>
         <dl>
           <div><dt>Etapa atual</dt><dd>A marcada “Parado” ou, senão, a “Em andamento” mais avançada. Sem nenhuma em andamento, a próxima que ainda não começou.</dd></div>
@@ -679,7 +660,7 @@
         </header>
         <div class="gaveta-corpo">
           <div class="resumo">
-            <div><span>Parado há</span><strong class="num">${a ? dias(a.diasParado) : '—'}</strong></div>
+            <div class="st-${p.status}"><span>Parado há</span><strong class="num">${a ? dias(a.diasParado) : '—'}</strong></div>
             <div><span>Progresso</span><strong class="num">${pct}%</strong></div>
             <div><span>Última movimentação</span><strong>${dataCurta(p.ultimaMovimentacao)}</strong></div>
           </div>
@@ -739,6 +720,7 @@
     tela.painel = painel;
     document.title = `${painel.titulo || 'Projetos Fiscais'} · Painel executivo`;
     app.innerHTML = `
+      <div class="folha">
       ${cabecalho(painel)}
       <main>
         ${avisoDesatualizado(painel)}
@@ -757,7 +739,7 @@
           <div class="secao-cabecalho">
             <div><h2>Todos os projetos</h2><p>Lista completa com filtros · <span id="contagem"></span></p></div>
           </div>
-          <div class="cartao lista-cartao">
+          <div class="lista-cartao">
             ${barraDeFiltros(painel)}
             <div class="lista" id="lista"></div>
           </div>
@@ -768,6 +750,7 @@
         </div>
         <p class="rodape">Fonte: Monday · workspace TAX - Consultivo · atualização automática</p>
       </main>
+      </div>
       <div id="camada" class="camada"></div>`;
     ligarEventos();
     renderizarDinamico();
