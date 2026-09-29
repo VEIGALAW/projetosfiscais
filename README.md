@@ -46,7 +46,7 @@ Monday (API) ──► GitHub Actions (de hora em hora) ──► página cripto
 3. No GitHub, em **Settings → Secrets and variables → Actions → New repository secret**, crie:
    - `MONDAY_API_TOKEN` — o token do passo 1
    - `DASHBOARD_PASSWORD` — a senha do passo 2
-4. Em **Settings → Pages → Build and deployment → Source**, selecione **GitHub Actions**.
+4. O site é publicado no branch `gh-pages` (Settings → Pages → *Deploy from a branch* → `gh-pages`).
 5. Em **Actions → Atualizar painel → Run workflow**, rode a primeira atualização.
 6. Acesse **https://veigalaw.github.io/projetosfiscais/** e entre com a senha. A opção
    *Lembrar neste dispositivo* evita digitar a senha de novo naquele navegador (o botão *Sair*
@@ -96,4 +96,4 @@ Estrutura:
 - `scripts/lib/cripto.mjs` — criptografia dos dados
 - `scripts/build.mjs` — junta tudo e gera a página
 - `site/` — página do painel (HTML, CSS e JavaScript puros)
-- `.github/workflows/painel.yml` — atualização e publicação automáticas
+- `.github/workflows/painel.yml` — atualização e publicação automáticas (branch `gh-pages`)

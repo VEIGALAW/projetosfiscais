@@ -11,14 +11,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: painel-pages
   cancel-in-progress: false
 
 jobs:
-  construir:
+  publicar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -30,30 +30,38 @@ jobs:
       - name: Testes
         run: npm test
 
+      - name: Verificar segredos
+        id: segredos
+        env:
+          TOKEN: ${{ secrets.MONDAY_API_TOKEN }}
+          SENHA: ${{ secrets.DASHBOARD_PASSWORD }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$SENHA" ]; then
+            echo "::warning::Configure os secrets MONDAY_API_TOKEN e DASHBOARD_PASSWORD para atualizar o painel automaticamente."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Coletar do Monday e gerar o painel criptografado
+        if: steps.segredos.outputs.ok == 'true'
         env:
           MONDAY_API_TOKEN: ${{ secrets.MONDAY_API_TOKEN }}
           DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
         run: node scripts/build.mjs
 
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: dist
-
-  publicar:
-    needs: construir
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.publicacao.outputs.page_url }}
-    steps:
-      - id: publicacao
-        uses: actions/deploy-pages@v4
+      # Publica em gh-pages sempre como um único commit (sem histórico de dados antigos).
+      - name: Publicar no GitHub Pages
+        if: steps.segredos.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          git init -q -b gh-pages
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Atualiza painel"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" gh-pages
 
   manter-agendamento:
     # O GitHub desliga agendamentos de repositórios públicos após 60 dias sem commits;

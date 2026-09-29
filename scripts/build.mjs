@@ -91,6 +91,7 @@ async function main() {
   await fs.mkdir(destino, { recursive: true });
   await fs.writeFile(path.join(destino, 'index.html'), await montarHtml({ cifrado }));
   await fs.writeFile(path.join(destino, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
+  await fs.writeFile(path.join(destino, '.nojekyll'), '');
   console.log(`Painel criptografado gerado em ${destino}/`);
 }
 
