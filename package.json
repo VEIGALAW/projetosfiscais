@@ -1,0 +1,15 @@
+{
+  "name": "projetosfiscais",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Painel da diretoria para acompanhamento dos projetos de créditos fiscais (dados do Monday).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "previa": "node scripts/build.mjs --previa",
+    "test": "node --test test/*.test.mjs"
+  }
+}
