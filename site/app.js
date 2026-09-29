@@ -29,11 +29,14 @@
   const normalizar = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
   const fmtData = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, day: '2-digit', month: '2-digit', year: 'numeric' });
+  const fmtDataCurta = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, day: '2-digit', month: 'short' });
   const fmtHora = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, hour: '2-digit', minute: '2-digit' });
   const fmtChaveMes = new Intl.DateTimeFormat('en-CA', { timeZone: FUSO, year: 'numeric', month: '2-digit' });
+  const fmtDiaSemana = new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, weekday: 'long', day: 'numeric', month: 'long' });
   const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
   const data = (iso) => (iso ? fmtData.format(new Date(iso)) : '—');
+  const dataCurta = (iso) => (iso ? fmtDataCurta.format(new Date(iso)).replace('.', '') : '—');
   const dias = (n) => (n == null ? '—' : n === 1 ? '1 dia' : `${n} dias`);
   const ha = (n) => (n == null ? '' : n === 0 ? 'hoje' : `há ${dias(n)}`);
   const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
@@ -42,6 +45,10 @@
   const nomeCurto = (nome) => {
     const partes = String(nome).split(/\s+/).filter(Boolean).map(capitalizar);
     return partes.length <= 2 ? partes.join(' ') : `${partes[0]} ${partes[partes.length - 1]}`;
+  };
+  const iniciais = (nome) => {
+    const partes = nomeCurto(nome).split(' ');
+    return ((partes[0]?.[0] ?? '') + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
   };
 
   const mediana = (valores) => {
@@ -67,10 +74,13 @@
     externo: svg('<path d="M9 3h4v4M13 3 7.5 8.5M11 9.5V13H3V5h3.5"/>'),
     aviso: svg('<path d="M8 1.8 15 14H1z"/><path d="M8 6.2v3.4M8 11.8v.1"/>'),
     pessoa: svg('<circle cx="8" cy="5.5" r="2.7"/><path d="M2.8 14a5.2 5.2 0 0 1 10.4 0"/>'),
+    fechar: svg('<path d="m4 4 8 8M12 4l-8 8"/>'),
+    seta: svg('<path d="M6 3.5 10.5 8 6 12.5"/>'),
+    relogio: svg('<circle cx="8" cy="8" r="6"/><path d="M8 4.8V8l2.2 1.6"/>'),
+    alvo: svg('<circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2.5"/>'),
   };
 
-  const SELO = `<svg class="selo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#ffffff" fill-opacity=".12"/><rect x=".5" y=".5" width="31" height="31" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity=".25"/><path d="M9 22V10h4.5a4 4 0 0 1 0 8H9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 22l5-12" stroke="#8fc1ff" stroke-width="2.4" stroke-linecap="round"/></svg>`;
-  const SELO_ACESSO = SELO.replace('fill="#ffffff" fill-opacity=".12"', 'fill="#173a63"');
+  const SELO = `<svg class="selo" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#c9a45c"/><text x="20" y="26.5" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="700" fill="#0c2340" letter-spacing="-.5">VP</text></svg>`;
 
   const STATUS = {
     critico: { rotulo: 'Crítico', ordem: 0 },
@@ -80,25 +90,39 @@
   };
   const ESTADOS = { andamento: 'Em andamento', parado: 'Parado', pendente: 'Aguardando início', feito: 'Feito' };
 
-  const pilula = (status) =>
-    `<span class="pilula st-${status}">${ICONES[status]}${STATUS[status].rotulo}</span>`;
+  // Cores fixas por pessoa (ordem alfabética), só para identificar avatares.
+  const CORES_PESSOAS = ['#2a78d6', '#eb6834', '#1baf7a', '#9085e9', '#e87ba4', '#008300', '#4a3aa7', '#c98500'];
+  const corDaPessoa = new Map();
+
+  const pilula = (status) => `<span class="pilula st-${status}">${ICONES[status]}${STATUS[status].rotulo}</span>`;
   const etiquetaEstado = (estado) =>
     `<span class="etiqueta e-${estado}"><span class="ponto"></span>${ESTADOS[estado] ?? estado}</span>`;
+  const avatar = (nome, tamanho = '') =>
+    `<span class="avatar ${tamanho}" style="--cor:${corDaPessoa.get(nome) ?? '#6e6d67'}" data-dica="${esc(nome)}">${esc(iniciais(nome))}</span>`;
+  const avatares = (nomes, max = 3) =>
+    nomes.length
+      ? `<span class="avatares">${nomes.slice(0, max).map((n) => avatar(n)).join('')}${nomes.length > max ? `<span class="avatar mais" data-dica="${esc(nomes.slice(max).join(', '))}">+${nomes.length - max}</span>` : ''}</span>`
+      : `<span class="sem-dono" data-dica="Etapa sem responsável no Monday">${ICONES.pessoa}Sem dono</span>`;
   const listaPessoas = (nomes) =>
     nomes.length
-      ? nomes.map((n) => `<span data-dica="${esc(n)}">${esc(nomeCurto(n))}</span>`).join(', ')
+      ? nomes.map((n) => `<span class="pessoa-inline">${avatar(n, 'mini')}${esc(nomeCurto(n))}</span>`).join('')
       : `<span class="sem-dono">${ICONES.pessoa}Sem responsável</span>`;
+  const selo = (status, n) =>
+    `<span class="selo-dias st-${status}" data-dica="${STATUS[status].rotulo}${n != null ? ` · ${dias(n)} sem avanço` : ''}">${ICONES[status]}<b class="num">${n ?? '—'}</b><small>${n === 1 ? 'dia' : 'dias'}</small></span>`;
 
   // ---------- Estado da tela ----------
 
   const tela = {
     painel: null,
+    criptografado: false,
     filtro: { status: 'ativos', busca: '', pessoa: '', fase: '', tipo: '' },
     ordem: { campo: 'parado', direcao: 'desc' },
-    abertos: new Set(),
+    aberto: null,
   };
 
   const nomeDaFase = (id) => tela.painel.fases.find((f) => f.id === id)?.nome ?? 'Outras etapas';
+  const projetoPorId = (id) => tela.painel.projetos.find((p) => p.id === id);
+  const ativosDe = (projetos) => projetos.filter((p) => p.status !== 'concluido');
 
   function prepararProjetos(painel) {
     for (const p of painel.projetos) {
@@ -117,6 +141,9 @@
         ].filter(Boolean).join(' '),
       );
     }
+    const todas = [...new Set(painel.projetos.flatMap((p) => p.frentes.flatMap((f) => [...(f.atual?.responsaveis ?? []), ...(f.proximo?.responsaveis ?? [])])))]
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    todas.forEach((n, i) => corDaPessoa.set(n, CORES_PESSOAS[i % CORES_PESSOAS.length]));
   }
 
   // ---------- Acesso com senha ----------
@@ -139,19 +166,23 @@
   function telaDeAcesso(pacote) {
     app.innerHTML = `
       <div class="acesso">
+        <div class="acesso-lado">
+          <div class="acesso-marca">${SELO}<span>Veiga Partners</span></div>
+          <h1>Projetos Fiscais</h1>
+          <p>Visão executiva da carteira de levantamento de créditos: onde cada projeto está, quem está com ele e o que está parado.</p>
+        </div>
         <form class="acesso-cartao" id="form-acesso" autocomplete="on">
-          <div class="acesso-marca">${SELO_ACESSO}
-            <div><h1>Projetos Fiscais</h1><p>Painel da diretoria · acesso restrito</p></div>
-          </div>
+          <h2>Acesso da diretoria</h2>
+          <p class="acesso-sub">Digite a senha para abrir o painel.</p>
           <input type="text" name="username" value="diretoria" autocomplete="username" hidden>
           <div class="campo">
-            <label for="senha">Senha de acesso</label>
+            <label for="senha">Senha</label>
             <input id="senha" name="password" type="password" autocomplete="current-password" required>
           </div>
           <label class="lembrar"><input type="checkbox" id="lembrar"> Lembrar neste dispositivo</label>
           <button class="botao" type="submit">Entrar</button>
           <p class="erro" id="erro-acesso" role="alert"></p>
-          <p class="acesso-rodape">Os dados são criptografados e só abrem com a senha da diretoria.</p>
+          <p class="acesso-rodape">${ICONES.sair}Dados criptografados · acesso restrito</p>
         </form>
       </div>`;
     const form = document.getElementById('form-acesso');
@@ -190,7 +221,7 @@
   // ---------- Tema ----------
 
   const TEMAS = ['auto', 'light', 'dark'];
-  const NOME_TEMA = { auto: 'Tema automático', light: 'Tema claro', dark: 'Tema escuro' };
+  const NOME_TEMA = { auto: 'Automático', light: 'Claro', dark: 'Escuro' };
 
   function aplicarTema(tema) {
     if (tema === 'light' || tema === 'dark') document.documentElement.dataset.theme = tema;
@@ -214,11 +245,12 @@
     });
   }
 
+  const gravidade = (p) => (3 - STATUS[p.status].ordem) * 100000 + (p._parado ?? -1);
+
   function ordenar(projetos) {
     const { campo, direcao } = tela.ordem;
     const sinal = direcao === 'asc' ? 1 : -1;
     // Critérios em ordem crescente; "desc" inverte. Gravidade: status primeiro, depois dias parado.
-    const gravidade = (p) => (3 - STATUS[p.status].ordem) * 100000 + (p._parado ?? -1);
     const criterios = {
       parado: (a, b) => gravidade(a) - gravidade(b),
       entrada: (a, b) => Date.parse(a.entrada) - Date.parse(b.entrada),
@@ -228,22 +260,105 @@
     return [...projetos].sort((a, b) => sinal * criterios[campo](a, b) || a.empresa.localeCompare(b.empresa, 'pt-BR'));
   }
 
-  // ---------- Componentes ----------
+  const filtroAtivo = () => {
+    const f = tela.filtro;
+    return f.status !== 'ativos' || f.busca || f.pessoa || f.fase || f.tipo;
+  };
 
-  function topo(painel) {
+  // ---------- Cabeçalho e resumo executivo ----------
+
+  function donut(contagem, total) {
+    const r = 62;
+    const c = 2 * Math.PI * r;
+    const gap = total > 1 ? 3 : 0;
+    let acumulado = 0;
+    const arcos = ['critico', 'atencao', 'em_dia']
+      .filter((s) => contagem[s])
+      .map((s) => {
+        const tam = (contagem[s] / total) * c;
+        const arco = `<circle class="arco ${s}" r="${r}" cx="80" cy="80" stroke-dasharray="${Math.max(0, tam - gap)} ${c}" stroke-dashoffset="${-acumulado}" data-dica="${STATUS[s].rotulo}: ${plural(contagem[s], 'projeto', 'projetos')}"/>`;
+        acumulado += tam;
+        return arco;
+      })
+      .join('');
+    return `
+      <svg class="donut" viewBox="0 0 160 160" role="img" aria-label="Situação dos ${total} projetos ativos">
+        <circle class="trilho" r="${r}" cx="80" cy="80"/>
+        <g transform="rotate(-90 80 80)">${arcos}</g>
+        <text x="80" y="78" text-anchor="middle" class="donut-num">${total}</text>
+        <text x="80" y="100" text-anchor="middle" class="donut-rot">projetos ativos</text>
+      </svg>`;
+  }
+
+  function kpis(painel) {
+    const todos = painel.projetos;
+    const ativos = ativosDe(todos);
+    const contagem = { critico: 0, atencao: 0, em_dia: 0 };
+    for (const p of ativos) contagem[p.status]++;
+    const concluidos = todos.length - ativos.length;
+    const semDono = ativos.filter((p) => p._semDono).length;
+    const novos = todos.filter((p) => (p.diasDesdeEntrada ?? 999) <= 30).length;
+    const { atencaoAposDias: at, criticoAposDias: cr } = painel.limites;
+    const kpi = (valor, rotulo, nota, { acao, alvo, status, pressionado } = {}) => `
+      <button type="button" class="kpi ${status ? `st-${status}` : ''}" ${acao ? `data-acao="${acao}" data-valor="${alvo}"` : 'disabled'} aria-pressed="${Boolean(pressionado)}">
+        <span class="kpi-valor num">${valor}</span>
+        <span class="kpi-rotulo">${status ? ICONES[status] : ''}${rotulo}</span>
+        <span class="kpi-nota">${nota}</span>
+      </button>`;
+    const f = tela.filtro;
+
+    return `
+      <div class="kpis" id="kpis">
+              ${kpi(contagem.critico, 'Críticos', `+${cr} dias ou “Parado”`, { acao: 'status', alvo: 'critico', status: 'critico', pressionado: f.status === 'critico' })}
+              ${kpi(contagem.atencao, 'Atenção', `${at + 1} a ${cr} dias`, { acao: 'status', alvo: 'atencao', status: 'atencao', pressionado: f.status === 'atencao' })}
+              ${kpi(contagem.em_dia, 'Em dia', `até ${at} dias`, { acao: 'status', alvo: 'em_dia', status: 'em_dia', pressionado: f.status === 'em_dia' })}
+              ${kpi(semDono, 'Sem dono', 'etapa sem responsável', { acao: 'pessoa', alvo: '__sem__', pressionado: f.pessoa === '__sem__' })}
+              ${kpi(concluidos, 'Concluídos', `${plural(novos, 'novo', 'novos')} em 30 dias`, { acao: 'status', alvo: 'concluido', status: 'concluido', pressionado: f.status === 'concluido' })}
+            </div>
+    `;
+  }
+
+  function cabecalho(painel) {
+    const todos = painel.projetos;
+    const ativos = ativosDe(todos);
+    const contagem = { critico: 0, atencao: 0, em_dia: 0 };
+    for (const p of ativos) contagem[p.status]++;
+    const concluidos = todos.length - ativos.length;
+    const semDono = ativos.filter((p) => p._semDono).length;
+    const med = mediana(ativos.map((p) => p._parado));
+    const novos = todos.filter((p) => (p.diasDesdeEntrada ?? 999) <= 30).length;
+    const { atencaoAposDias: at, criticoAposDias: cr } = painel.limites;
     const gerado = new Date(painel.geradoEm);
+
+    const pct = ativos.length ? Math.round((contagem.critico / ativos.length) * 100) : 0;
+    const manchete = !ativos.length
+      ? 'Nenhum projeto ativo no momento.'
+      : contagem.critico === 0
+        ? 'Carteira em dia: nenhum projeto parado há mais de ' + cr + ' dias.'
+        : `<em>${contagem.critico} de ${ativos.length}</em> projetos estão parados há mais de ${cr} dias.`;
+
     return `
       <header class="topo">
-        <div class="topo-interno">
-          ${SELO}
-          <div class="topo-titulo">
-            <h1>${esc(painel.titulo || 'Projetos Fiscais')}</h1>
-            <p>${esc(painel.subtitulo || '')}</p>
-          </div>
+        <div class="topo-barra">
+          <div class="marca">${SELO}<div><strong>Veiga Partners</strong><span>Projetos Fiscais · Painel executivo</span></div></div>
           <div class="topo-acoes">
-            <span class="atualizado">Dados do Monday de <strong>${fmtData.format(gerado)} às ${fmtHora.format(gerado)}</strong></span>
-            <button class="icone-botao" type="button" data-acao="tema" id="botao-tema">${ICONES.tema}<span>${NOME_TEMA[temaAtual()]}</span></button>
+            <span class="atualizado">${ICONES.relogio}Atualizado ${fmtData.format(gerado)} às ${fmtHora.format(gerado)}</span>
+            <button class="icone-botao" type="button" data-acao="tema">${ICONES.tema}<span>${NOME_TEMA[temaAtual()]}</span></button>
             ${tela.criptografado ? `<button class="icone-botao" type="button" data-acao="sair">${ICONES.sair}<span>Sair</span></button>` : ''}
+          </div>
+        </div>
+        <div class="heroi">
+          <div class="heroi-texto">
+            <p class="sobretitulo">${esc(fmtDiaSemana.format(gerado))}</p>
+            <h1>${manchete}</h1>
+            <p class="heroi-sub">${ativos.length ? `${pct}% da carteira ativa está travada. O tempo típico sem avanço na etapa atual é de <strong>${dias(med)}</strong>${semDono ? ` e <strong>${plural(semDono, 'projeto está', 'projetos estão')} sem responsável</strong>` : ''}.` : ''}</p>
+            ${kpis(painel)}
+          </div>
+          <div class="heroi-grafico">
+            ${donut(contagem, ativos.length || 1)}
+            <div class="donut-legenda">
+              ${['critico', 'atencao', 'em_dia'].map((s) => `<span class="st-${s}">${ICONES[s]}${STATUS[s].rotulo}<b class="num">${contagem[s]}</b></span>`).join('')}
+            </div>
           </div>
         </div>
       </header>`;
@@ -254,112 +369,112 @@
     const limite = painel.limites?.dadosDesatualizadosAposHoras ?? 30;
     if (horas <= limite) return '';
     return `<div class="aviso" role="status">${ICONES.aviso}<div><strong>Dados desatualizados.</strong>
-      A última atualização foi em ${data(painel.geradoEm)} às ${fmtHora.format(new Date(painel.geradoEm))}. A atualização automática pode ter falhado — verifique a aba Actions do GitHub.</div></div>`;
+      A última atualização foi em ${data(painel.geradoEm)} às ${fmtHora.format(new Date(painel.geradoEm))}. Verifique a atualização automática (aba Actions do GitHub).</div></div>`;
   }
 
-  function kpis(painel) {
-    const todos = painel.projetos;
-    const ativos = todos.filter((p) => p.status !== 'concluido');
-    const conta = (s) => ativos.filter((p) => p.status === s).length;
-    const concluidos = todos.length - ativos.length;
-    const novos = todos.filter((p) => (p.diasDesdeEntrada ?? 999) <= 30).length;
-    const semDono = ativos.filter((p) => p._semDono).length;
-    const med = mediana(ativos.map((p) => p._parado));
-    const { atencaoAposDias: at, criticoAposDias: cr } = painel.limites;
-    const f = tela.filtro;
+  // ---------- Esteira por fase ----------
 
-    const bloco = ({ acao, valor, rotulo, numero, sufixo = '', nota, status, pressionado }) => `
-      <button type="button" class="kpi ${status ? `st-${status}` : ''}" data-acao="${acao}" data-valor="${valor}" aria-pressed="${pressionado}">
-        <span class="kpi-rotulo">${status ? ICONES[status] : ''}${rotulo}</span>
-        <span class="kpi-valor num">${numero}${sufixo ? `<small>${sufixo}</small>` : ''}</span>
-        <span class="kpi-nota">${nota}</span>
-      </button>`;
-
+  function cartaoProjeto(p) {
+    const a = p._atual;
     return `
-      <div class="kpis" id="kpis">
-        ${bloco({ acao: 'status', valor: 'ativos', rotulo: 'Projetos ativos', numero: ativos.length, nota: `${plural(concluidos, 'concluído', 'concluídos')} · ${plural(novos, 'novo', 'novos')} em 30 dias`, pressionado: f.status === 'ativos' && !f.pessoa })}
-        ${bloco({ acao: 'status', valor: 'critico', status: 'critico', rotulo: 'Críticos', numero: conta('critico'), nota: `parados há +${cr} dias ou marcados “Parado”`, pressionado: f.status === 'critico' })}
-        ${bloco({ acao: 'status', valor: 'atencao', status: 'atencao', rotulo: 'Atenção', numero: conta('atencao'), nota: `${at + 1} a ${cr} dias sem avanço`, pressionado: f.status === 'atencao' })}
-        ${bloco({ acao: 'status', valor: 'em_dia', status: 'em_dia', rotulo: 'Em dia', numero: conta('em_dia'), nota: `com atividade nos últimos ${at} dias`, pressionado: f.status === 'em_dia' })}
-        <div class="kpi kpi-estatico">
-          <span class="kpi-rotulo">Tempo típico parado</span>
-          <span class="kpi-valor num">${med ?? '—'}<small>${med === 1 ? 'dia' : 'dias'}</small></span>
-          <span class="kpi-nota">mediana na etapa atual dos ativos</span>
-        </div>
-        ${bloco({ acao: 'pessoa', valor: '__sem__', rotulo: `${ICONES.pessoa}Sem responsável`, numero: semDono, nota: 'etapa atual sem dono no Monday', pressionado: f.pessoa === '__sem__' })}
+      <button type="button" class="card st-${p.status}" data-acao="abrir" data-id="${esc(p.id)}">
+        <span class="card-empresa">${esc(p.empresa)}</span>
+        <span class="card-etapa" data-dica="${esc(a ? `${a.nome} · ${ESTADOS[a.estado]}` : 'Concluído')}">${a?.estado === 'parado' ? '<span class="marca-parado">Parado</span> ' : ''}${esc(a?.nome ?? 'Concluído')}</span>
+        <span class="card-rodape">
+          ${a ? avatares(a.responsaveis) : '<span></span>'}
+          ${selo(p.status, p._parado)}
+        </span>
+      </button>`;
+  }
+
+  function esteira(painel) {
+    const visiveis = ativosDe(filtrar(painel.projetos));
+    const colunas = painel.fases
+      .map((f) => ({ ...f, projetos: ordenar(visiveis.filter((p) => p._fase === f.id)) }))
+      .filter((c) => c.projetos.length || c.id !== 'outras');
+    return `
+      <div class="esteira" id="esteira">
+        ${colunas
+          .map((c, i) => {
+            const criticos = c.projetos.filter((p) => p.status === 'critico').length;
+            return `
+            <section class="coluna-fase" aria-label="${esc(c.nome)}">
+              <header>
+                <span class="fase-num">${c.id === 'outras' ? '•' : i + 1}</span>
+                <div><h3>${esc(c.nome)}</h3><span>${plural(c.projetos.length, 'projeto', 'projetos')}${criticos ? ` · ${criticos} crítico${criticos > 1 ? 's' : ''}` : ''}</span></div>
+              </header>
+              <div class="cards">${c.projetos.map(cartaoProjeto).join('') || '<p class="coluna-vazia">Nenhum projeto nesta fase</p>'}</div>
+            </section>`;
+          })
+          .join('')}
       </div>`;
   }
 
-  const ORDEM_SEGMENTOS = ['critico', 'atencao', 'em_dia'];
+  // ---------- Gargalos e pessoas ----------
 
-  function linhasDeBarras(linhas, acao, selecionado) {
-    const maximo = Math.max(1, ...linhas.map((l) => l.total));
-    if (!linhas.length) return '<p class="barra-vazia">Nenhum projeto ativo.</p>';
-    return linhas
-      .map((l) => {
-        const segmentos = ORDEM_SEGMENTOS.filter((s) => l.contagem[s])
-          .map((s) => {
-            const n = l.contagem[s];
-            return `<span class="barra-seg ${s}" style="width:${(n / maximo) * 100}%" data-dica="${esc(l.rotulo)} · ${STATUS[s].rotulo}: ${plural(n, 'projeto', 'projetos')}"></span>`;
-          })
-          .join('');
-        return `
-          <button type="button" class="barra-linha" data-acao="${acao}" data-valor="${esc(l.valor)}" aria-pressed="${selecionado === l.valor}"
-            aria-label="${esc(l.rotulo)}: ${plural(l.total, 'projeto', 'projetos')}">
-            <span class="barra-rotulo" data-dica="${esc(l.dica ?? l.rotulo)}">${esc(l.rotulo)}</span>
-            <span class="barra-trilho">${segmentos}</span>
-            <span class="barra-total num">${l.total}</span>
-          </button>`;
-      })
-      .join('');
+  function gargalos(painel) {
+    const lista = [...ativosDe(painel.projetos)].sort((a, b) => (b._parado ?? -1) - (a._parado ?? -1)).slice(0, 8);
+    const maximo = Math.max(1, ...lista.map((p) => p._parado ?? 0));
+    return `
+      <section class="cartao painel-bloco">
+        <div class="bloco-cabecalho">
+          <div><h2>Maiores gargalos</h2><p>Projetos há mais tempo sem avanço na etapa atual</p></div>
+        </div>
+        <ol class="ranking">
+          ${lista
+            .map(
+              (p, i) => `
+            <li>
+              <button type="button" class="ranking-linha" data-acao="abrir" data-id="${esc(p.id)}">
+                <span class="posicao num">${i + 1}</span>
+                <span class="ranking-nome"><strong>${esc(p.empresa)}</strong><span>${esc(p._atual?.nome ?? '')}</span></span>
+                <span class="ranking-barra"><span class="barra-dias st-${p.status}" style="width:${Math.max(4, ((p._parado ?? 0) / maximo) * 100)}%"></span></span>
+                <span class="ranking-dias num">${p._parado ?? '—'}<small>dias</small></span>
+                ${p._atual ? avatares(p._atual.responsaveis, 2) : ''}
+              </button>
+            </li>`,
+            )
+            .join('')}
+        </ol>
+      </section>`;
   }
 
-  const contarPorStatus = (projetos) => {
-    const contagem = { critico: 0, atencao: 0, em_dia: 0 };
-    for (const p of projetos) if (p.status in contagem) contagem[p.status]++;
-    return contagem;
-  };
-
-  const legendaStatus = () =>
-    `<div class="legenda">${ORDEM_SEGMENTOS.map((s) => `<span class="st-${s}">${ICONES[s]}${STATUS[s].rotulo}</span>`).join('')}</div>`;
-
-  function graficos(painel) {
-    const ativos = painel.projetos.filter((p) => p.status !== 'concluido');
-
-    const porFase = painel.fases
-      .map((f) => {
-        const doGrupo = ativos.filter((p) => p._fase === f.id);
-        return { valor: f.id, rotulo: f.nome, total: doGrupo.length, contagem: contarPorStatus(doGrupo) };
-      })
-      .filter((l) => l.total > 0 || l.valor !== 'outras');
-
+  function pessoas(painel) {
+    const ativos = ativosDe(painel.projetos);
     const nomes = [...new Set(ativos.flatMap((p) => p._pessoas))];
-    const porPessoa = nomes
+    const linhas = nomes
       .map((n) => {
         const doResp = ativos.filter((p) => p._pessoas.includes(n));
-        return { valor: n, rotulo: nomeCurto(n), dica: n, total: doResp.length, contagem: contarPorStatus(doResp) };
+        const conta = { critico: 0, atencao: 0, em_dia: 0 };
+        for (const p of doResp) conta[p.status]++;
+        return { n, total: doResp.length, conta };
       })
-      .sort((a, b) => b.total - a.total || b.contagem.critico - a.contagem.critico || a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
-    const semDono = ativos.filter((p) => p._semDono);
-    if (semDono.length) {
-      porPessoa.push({ valor: '__sem__', rotulo: 'Sem responsável', total: semDono.length, contagem: contarPorStatus(semDono) });
-    }
-
+      .sort((a, b) => b.total - a.total || b.conta.critico - a.conta.critico || a.n.localeCompare(b.n, 'pt-BR'));
+    const maximo = Math.max(1, ...linhas.map((l) => l.total));
+    const semDono = ativos.filter((p) => p._semDono).length;
     return `
-      <div class="graficos" id="graficos">
-        <section class="cartao grafico" aria-labelledby="g-fase">
-          <h3 id="g-fase">Em que fase estão os projetos</h3>
-          <p class="sub">Fase da etapa atual de cada projeto ativo · clique para filtrar a lista</p>
-          ${legendaStatus()}
-          <div class="barras">${linhasDeBarras(porFase, 'fase', tela.filtro.fase)}</div>
-        </section>
-        <section class="cartao grafico" aria-labelledby="g-pessoa">
-          <h3 id="g-pessoa">Com quem estão os projetos</h3>
-          <p class="sub">Projetos ativos em que a pessoa é responsável por uma etapa atual · clique para filtrar</p>
-          ${legendaStatus()}
-          <div class="barras">${linhasDeBarras(porPessoa, 'pessoa', tela.filtro.pessoa)}</div>
-        </section>
-      </div>`;
+      <section class="cartao painel-bloco">
+        <div class="bloco-cabecalho">
+          <div><h2>Com quem estão os projetos</h2><p>Projetos ativos por responsável da etapa atual · clique para filtrar</p></div>
+        </div>
+        <div class="pessoas">
+          ${linhas
+            .map(
+              (l) => `
+            <button type="button" class="pessoa-linha" data-acao="pessoa" data-valor="${esc(l.n)}" aria-pressed="${tela.filtro.pessoa === l.n}">
+              ${avatar(l.n)}
+              <span class="pessoa-nome">${esc(nomeCurto(l.n))}</span>
+              <span class="pessoa-barra" style="--largura:${(l.total / maximo) * 100}%">
+                ${['critico', 'atencao', 'em_dia'].filter((s) => l.conta[s]).map((s) => `<span class="seg ${s}" style="flex:${l.conta[s]}" data-dica="${esc(nomeCurto(l.n))} · ${STATUS[s].rotulo}: ${plural(l.conta[s], 'projeto', 'projetos')}"></span>`).join('')}
+              </span>
+              <span class="pessoa-total num">${l.total}</span>
+            </button>`,
+            )
+            .join('')}
+          ${semDono ? `<button type="button" class="pessoa-linha sem" data-acao="pessoa" data-valor="__sem__" aria-pressed="${tela.filtro.pessoa === '__sem__'}"><span class="avatar vazio">${ICONES.pessoa}</span><span class="pessoa-nome">Sem responsável</span><span class="pessoa-barra" style="--largura:${(semDono / maximo) * 100}%"><span class="seg critico" style="flex:1"></span></span><span class="pessoa-total num">${semDono}</span></button>` : ''}
+        </div>
+        <div class="legenda">${['critico', 'atencao', 'em_dia'].map((s) => `<span class="st-${s}">${ICONES[s]}${STATUS[s].rotulo}</span>`).join('')}</div>
+      </section>`;
   }
 
   function entradasPorMes(painel) {
@@ -377,81 +492,79 @@
     const maximo = Math.max(1, ...meses.map((m) => m.projetos.length));
     const total = meses.reduce((s, m) => s + m.projetos.length, 0);
     return `
-      <section class="cartao grafico" aria-labelledby="g-entradas">
-        <h3 id="g-entradas">Entrada de projetos por mês</h3>
-        <p class="sub">${plural(total, 'projeto iniciado', 'projetos iniciados')} nos últimos 12 meses (data de criação do quadro no Monday)</p>
+      <section class="cartao painel-bloco">
+        <div class="bloco-cabecalho">
+          <div><h2>Entrada de projetos</h2><p>${plural(total, 'projeto iniciado', 'projetos iniciados')} nos últimos 12 meses</p></div>
+        </div>
         <div class="colunas" role="img" aria-label="Entradas por mês: ${meses.map((m) => `${m.rotulo} ${m.projetos.length}`).join(', ')}">
           ${meses
             .map((m) => {
               const n = m.projetos.length;
-              const lista = n ? `: ${m.projetos.join(', ')}` : '';
-              return `<div class="coluna" data-dica="${esc(`${m.rotulo} · ${plural(n, 'projeto', 'projetos')}${lista}`)}">
+              return `<div class="coluna" data-dica="${esc(`${m.rotulo} · ${plural(n, 'projeto', 'projetos')}${n ? `: ${m.projetos.join(', ')}` : ''}`)}">
                 ${n ? `<span class="coluna-valor num">${n}</span>` : ''}
                 <span class="coluna-barra" style="height:${(n / maximo) * 100}%"></span>
+                <span class="coluna-rotulo">${esc(m.rotulo)}</span>
               </div>`;
             })
             .join('')}
         </div>
-        <div class="colunas-eixo">${meses.map((m) => `<span>${esc(m.rotulo)}</span>`).join('')}</div>
       </section>`;
   }
 
   function comoLer(painel) {
     const { atencaoAposDias: at, criticoAposDias: cr } = painel.limites;
     return `
-      <section class="cartao como-ler">
-        <h3>Como ler este painel</h3>
-        <ul>
-          <li><strong>Etapa atual:</strong> a etapa marcada como “Parado” ou, se não houver, a etapa “Em andamento” mais avançada. Sem nenhuma em andamento, é a próxima etapa que ainda não começou.</li>
-          <li><strong>Parado há:</strong> dias desde a última atividade na etapa atual (mudança de status, subtarefa ou comentário no Monday). Para etapas que ainda não começaram, conta desde a conclusão da etapa anterior.</li>
-          <li><strong>Semáforo:</strong> <em>Crítico</em> acima de ${cr} dias ou etapa marcada “Parado”; <em>Atenção</em> de ${at + 1} a ${cr} dias; <em>Em dia</em> até ${at} dias.</li>
-          <li><strong>Com quem está:</strong> responsáveis (coluna “Resp.”) da etapa atual no Monday.</li>
-          <li><strong>Frentes:</strong> cada grupo do quadro (um CNPJ ou uma frente de trabalho) é analisado em separado. A lista mostra a frente parada ou, senão, a de atividade mais recente; clique no projeto para ver todas.</li>
-          <li><strong>Entrada:</strong> data de criação do quadro do cliente no Monday.</li>
-        </ul>
+      <section class="cartao painel-bloco como-ler">
+        <div class="bloco-cabecalho"><div><h2>Como ler</h2><p>Regras usadas nos números acima</p></div></div>
+        <dl>
+          <div><dt>Etapa atual</dt><dd>A marcada “Parado” ou, senão, a “Em andamento” mais avançada. Sem nenhuma em andamento, a próxima que ainda não começou.</dd></div>
+          <div><dt>Dias parado</dt><dd>Desde a última atividade na etapa (status, subtarefa ou comentário no Monday).</dd></div>
+          <div><dt>Semáforo</dt><dd><span class="st-critico">${ICONES.critico}</span> Crítico: +${cr} dias ou “Parado” · <span class="st-atencao">${ICONES.atencao}</span> Atenção: ${at + 1}–${cr} dias · <span class="st-em_dia">${ICONES.em_dia}</span> Em dia: até ${at} dias</dd></div>
+          <div><dt>Entrada</dt><dd>Data de criação do quadro do cliente no Monday.</dd></div>
+        </dl>
       </section>`;
   }
 
+  // ---------- Lista completa ----------
+
   function barraDeFiltros(painel) {
-    const ativos = painel.projetos.filter((p) => p.status !== 'concluido');
     const conta = (s) => painel.projetos.filter((p) => p.status === s).length;
     const opcoesStatus = [
-      ['ativos', 'Ativos', ativos.length],
+      ['ativos', 'Ativos', ativosDe(painel.projetos).length],
       ['critico', 'Críticos', conta('critico')],
       ['atencao', 'Atenção', conta('atencao')],
       ['em_dia', 'Em dia', conta('em_dia')],
       ['concluido', 'Concluídos', conta('concluido')],
       ['todos', 'Todos', painel.projetos.length],
     ];
-    const pessoas = [...new Set(painel.projetos.flatMap((p) => p._pessoas))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const nomes = [...new Set(painel.projetos.flatMap((p) => p._pessoas))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
     const tipos = [...new Set(painel.projetos.map((p) => p.tipo))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
     return `
-      <div class="cartao filtros" role="search">
+      <div class="filtros" role="search">
         <label class="busca">
           <span class="oculto-visual">Buscar projeto, etapa ou pessoa</span>
           ${ICONES.busca}
           <input type="search" id="busca" placeholder="Buscar empresa, etapa ou pessoa…" autocomplete="off">
         </label>
         <div class="chips" role="group" aria-label="Situação">
-          ${opcoesStatus
-            .map(([valor, rotulo, n]) => `<button type="button" class="chip" data-acao="status" data-valor="${valor}" aria-pressed="false">${rotulo} <span class="qtd num">${n}</span></button>`)
-            .join('')}
+          ${opcoesStatus.map(([valor, rotulo, n]) => `<button type="button" class="chip" data-acao="status" data-valor="${valor}" aria-pressed="false">${rotulo}<span class="qtd num">${n}</span></button>`).join('')}
         </div>
-        <select data-filtro="pessoa" aria-label="Responsável">
-          <option value="">Todos os responsáveis</option>
-          <option value="__sem__">Sem responsável</option>
-          ${pessoas.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}
-        </select>
-        <select data-filtro="fase" aria-label="Fase">
-          <option value="">Todas as fases</option>
-          ${painel.fases.map((f) => `<option value="${esc(f.id)}">${esc(f.nome)}</option>`).join('')}
-        </select>
-        <select data-filtro="tipo" aria-label="Tipo de projeto">
-          <option value="">Todos os tipos</option>
-          ${tipos.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}
-        </select>
-        <button type="button" class="limpar" data-acao="limpar" hidden>Limpar filtros</button>
+        <div class="selects">
+          <select data-filtro="pessoa" aria-label="Responsável">
+            <option value="">Todos os responsáveis</option>
+            <option value="__sem__">Sem responsável</option>
+            ${nomes.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}
+          </select>
+          <select data-filtro="fase" aria-label="Fase">
+            <option value="">Todas as fases</option>
+            ${painel.fases.map((f) => `<option value="${esc(f.id)}">${esc(f.nome)}</option>`).join('')}
+          </select>
+          <select data-filtro="tipo" aria-label="Tipo de projeto">
+            <option value="">Todos os tipos</option>
+            ${tipos.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}
+          </select>
+          <button type="button" class="limpar" data-acao="limpar" hidden>Limpar filtros</button>
+        </div>
       </div>`;
   }
 
@@ -463,216 +576,215 @@
     };
     return `
       <div class="lista-cabecalho">
-        <span>Situação</span>
         ${col('empresa', 'Empresa')}
-        ${col('entrada', 'Entrada')}
         <span>Etapa atual</span>
-        <span>Com quem está</span>
+        <span>Com quem</span>
         ${col('parado', 'Parado há')}
         <span>Próximo passo</span>
+        ${col('entrada', 'Entrada')}
         ${col('progresso', 'Progresso')}
       </div>`;
   }
 
   function linhaProjeto(p) {
-    const atual = p._atual;
+    const a = p._atual;
     const principal = p._principal;
-    const aberto = tela.abertos.has(p.id);
-    const abertas = p.frentes.filter((f) => f.situacao !== 'concluida').length;
     const pct = p.progresso.total ? Math.round((p.progresso.feitas / p.progresso.total) * 100) : 0;
-    const meta = [p.tipo, p.frentes.length > 1 ? `${plural(p.frentes.length, 'frente', 'frentes')}${abertas && abertas !== p.frentes.length ? ` (${abertas} em aberto)` : ''}` : null]
-      .filter(Boolean)
-      .join(' · ');
-
-    const etapa = atual
-      ? `${p.frentes.length > 1 ? `<span class="nome-frente" data-dica="Frente: ${esc(principal.nome)}">${esc(principal.nome)}</span>` : ''}
-         <span class="nome-etapa">${esc(atual.nome)}</span>
-         <span class="etiquetas">${etiquetaEstado(atual.estado)}<span class="etiqueta">${esc(nomeDaFase(atual.fase))}</span></span>`
-      : `<span class="nome-etapa">Todas as etapas concluídas</span>`;
-
     return `
-      <article class="projeto ${aberto ? 'aberto' : ''}" data-id="${esc(p.id)}">
-        <div class="linha-projeto" role="button" tabindex="0" data-acao="alternar" data-id="${esc(p.id)}" aria-expanded="${aberto}">
-          <div class="c-status">${pilula(p.status)}</div>
-          <div class="c-empresa">
-            <strong>${esc(p.empresa)}</strong>
-            <span class="meta">${esc(meta)}</span>
-            ${p.alertas.length ? `<span class="alertas">${p.alertas.map((a) => `<span class="alerta-chip">${esc(a.texto)}</span>`).join('')}</span>` : ''}
-          </div>
-          <div class="c-entrada"><span class="rot-mobile">Entrada:</span><span class="num">${data(p.entrada)}</span> <span class="meta">${ha(p.diasDesdeEntrada)}</span></div>
-          <div class="c-etapa"><span class="rot-mobile">Etapa atual:</span>${etapa}</div>
-          <div class="c-quem"><span class="rot-mobile">Com quem:</span>${atual ? listaPessoas(atual.responsaveis) : '—'}</div>
-          <div class="c-parado">
-            ${atual ? `<span class="dias num">${atual.diasParado ?? '—'}<small>${atual.diasParado === 1 ? 'dia' : 'dias'}</small></span><span class="meta">desde ${data(atual.ultimaAtividade)}</span>` : '<span class="meta">—</span>'}
-          </div>
-          <div class="c-proximo"><span class="rot-mobile">Próximo:</span>${
-            principal?.proximo
-              ? `${esc(principal.proximo.nome)}<span class="meta">${principal.proximo.responsaveis.length ? esc(principal.proximo.responsaveis.map(nomeCurto).join(', ')) : 'sem responsável definido'}</span>`
-              : `<span class="meta">${atual ? 'Última etapa' : '—'}</span>`
-          }</div>
-          <div class="c-progresso">
-            <div class="medidor" data-dica="${p.progresso.feitas} de ${p.progresso.total} etapas concluídas">
-              <div class="medidor-trilho"><div class="medidor-preenchido" style="width:${pct}%"></div></div>
-              <span class="num">${p.progresso.feitas}/${p.progresso.total} etapas</span>
-            </div>
-          </div>
-        </div>
-        ${aberto ? detalheProjeto(p) : ''}
-      </article>`;
+      <button type="button" class="linha st-${p.status}" data-acao="abrir" data-id="${esc(p.id)}">
+        <span class="c-empresa">
+          <strong>${esc(p.empresa)}</strong>
+          <span class="meta">${esc(p.tipo)}${p.frentes.length > 1 ? ` · ${plural(p.frentes.length, 'frente', 'frentes')}` : ''}</span>
+        </span>
+        <span class="c-etapa">
+          <span class="nome-etapa">${esc(a?.nome ?? 'Todas as etapas concluídas')}</span>
+          ${a ? `<span class="etiquetas">${etiquetaEstado(a.estado)}<span class="etiqueta">${esc(nomeDaFase(a.fase))}</span></span>` : ''}
+        </span>
+        <span class="c-quem">${a ? avatares(a.responsaveis) : '—'}</span>
+        <span class="c-parado">${a ? selo(p.status, a.diasParado) : pilula('concluido')}</span>
+        <span class="c-proximo"><span class="rot-mobile">Próximo:</span>${principal?.proximo ? esc(principal.proximo.nome) : `<span class="meta">${a ? 'Última etapa' : '—'}</span>`}</span>
+        <span class="c-entrada"><span class="rot-mobile">Entrada:</span><span class="num">${data(p.entrada)}</span><span class="meta">${ha(p.diasDesdeEntrada)}</span></span>
+        <span class="c-progresso">
+          <span class="medidor" data-dica="${p.progresso.feitas} de ${p.progresso.total} etapas concluídas">
+            <span class="medidor-trilho"><span class="medidor-preenchido" style="width:${pct}%"></span></span>
+            <span class="num">${pct}%</span>
+          </span>
+        </span>
+      </button>`;
   }
 
-  function blocoFrente(f, destaque) {
+  // ---------- Detalhe (gaveta lateral) ----------
+
+  function blocoFrente(f, unica) {
     const a = f.atual;
-    const indiceAtual = a ? a.indice : -1;
     const trilha = f.etapas
-      .map(
-        (e, i) =>
-          `<span class="passo ${e.estado} ${i === indiceAtual ? 'atual' : ''}" data-dica="${i + 1}. ${esc(e.nome)} — ${esc(ESTADOS[e.estado])}"></span>`,
-      )
+      .map((e, i) => `<span class="passo ${e.estado} ${a && i === a.indice ? 'atual' : ''}" data-dica="${i + 1}. ${esc(e.nome)} — ${esc(ESTADOS[e.estado])}"></span>`)
       .join('');
 
-    let atualHtml = '<p>Todas as etapas desta frente foram concluídas.</p>';
+    let atualHtml = '<p class="meta">Todas as etapas desta frente foram concluídas.</p>';
     if (a) {
       const subs = a.subtarefasAbertas.length
-        ? `<p class="meta" style="margin-top:8px">Subtarefas em aberto (${a.subtarefasAbertas.length} de ${a.subtarefasTotal}):</p>
-           <ul>${a.subtarefasAbertas
-             .slice(0, 6)
-             .map((s) => `<li>${esc(s.nome)} <span class="meta" style="display:inline">· ${esc(s.rotulo || 'sem status')}${s.responsaveis.length ? ` · ${esc(s.responsaveis.map(nomeCurto).join(', '))}` : ''}</span></li>`)
-             .join('')}${a.subtarefasAbertas.length > 6 ? `<li class="meta">+ ${a.subtarefasAbertas.length - 6} outras</li>` : ''}</ul>`
+        ? `<div class="subtarefas"><h5>Subtarefas em aberto · ${a.subtarefasAbertas.length} de ${a.subtarefasTotal}</h5><ul>${a.subtarefasAbertas
+            .slice(0, 6)
+            .map((s) => `<li>${esc(s.nome)}<span class="meta">${esc(s.rotulo || 'sem status')}${s.responsaveis.length ? ` · ${esc(s.responsaveis.map(nomeCurto).join(', '))}` : ''}</span></li>`)
+            .join('')}${a.subtarefasAbertas.length > 6 ? `<li class="meta">+ ${a.subtarefasAbertas.length - 6} outras</li>` : ''}</ul></div>`
         : '';
       const comentario = a.ultimoComentario
-        ? `<blockquote class="comentario">${esc(a.ultimoComentario.texto)}<footer>${esc(a.ultimoComentario.autor)} · ${data(a.ultimoComentario.data)}</footer></blockquote>`
+        ? `<blockquote class="comentario"><p>${esc(a.ultimoComentario.texto)}</p><footer>${esc(a.ultimoComentario.autor)} · ${data(a.ultimoComentario.data)}</footer></blockquote>`
         : '';
       atualHtml = `
-        <p><strong>${esc(a.nome)}</strong> ${etiquetaEstado(a.estado)}</p>
-        <p class="meta">${a.estado === 'pendente' ? 'Aguardando desde' : 'Nesta situação desde'} ${data(a.desde)} (${dias(a.diasNaEtapa)}) · última atividade ${data(a.ultimaAtividade)} (${ha(a.diasParado)})</p>
-        <p>Com: ${listaPessoas(a.responsaveis)}</p>
-        ${subs}${comentario}`;
+        <div class="etapa-atual">
+          <div class="etapa-atual-topo"><strong>${esc(a.nome)}</strong>${etiquetaEstado(a.estado)}</div>
+          <p class="meta">${a.estado === 'pendente' ? 'Aguardando desde' : 'Nesta situação desde'} ${data(a.desde)} · última atividade ${ha(a.diasParado)}</p>
+          <div class="pessoas-inline">${listaPessoas(a.responsaveis)}</div>
+        </div>
+        ${comentario}${subs}`;
     }
 
     const outras = f.outrasAbertas.length
-      ? `<h5 style="margin-top:12px">Outras etapas abertas</h5>
-         <ul>${f.outrasAbertas
-           .map((o) => `<li>${esc(o.nome)} <span class="meta" style="display:inline">· ${esc(ESTADOS[o.estado])} · sem atualização ${ha(o.diasParado)}${o.responsaveis.length ? ` · ${esc(o.responsaveis.map(nomeCurto).join(', '))}` : ''}</span></li>`)
-           .join('')}</ul>`
+      ? `<div class="outras"><h5>Outras etapas abertas</h5><ul>${f.outrasAbertas
+          .map((o) => `<li>${esc(o.nome)}<span class="meta">${esc(ESTADOS[o.estado])} · sem atualização ${ha(o.diasParado)}</span></li>`)
+          .join('')}</ul></div>`
       : '';
 
     return `
-      <div class="frente">
-        <div class="frente-cabecalho">
-          <h4>${esc(f.nome || 'Etapas')}${destaque ? ' <span class="meta" style="display:inline;font-weight:400">· em destaque na lista</span>' : ''}</h4>
-          ${pilula(f.status)}
-          <span class="meta">${f.progresso.feitas} de ${f.progresso.total} etapas concluídas</span>
-        </div>
+      <section class="frente">
+        ${unica ? '' : `<header class="frente-cabecalho"><h4>${esc(f.nome || 'Etapas')}</h4>${pilula(f.status)}</header>`}
+        <div class="trilha-rotulo"><span>Etapas</span><span class="num">${f.progresso.feitas}/${f.progresso.total} concluídas</span></div>
         <div class="trilha" aria-label="Etapas da frente">${trilha}</div>
-        <div class="frente-grade">
-          <div class="bloco"><h5>Etapa atual</h5>${atualHtml}</div>
-          <div class="bloco">
-            <h5>Próximo passo</h5>
-            ${f.proximo ? `<p>${esc(f.proximo.nome)}</p><p class="meta">${f.proximo.responsaveis.length ? `Com: ${esc(f.proximo.responsaveis.map(nomeCurto).join(', '))}` : 'Sem responsável definido'}</p>` : `<p class="meta">${a ? 'Esta é a última etapa pendente.' : '—'}</p>`}
-            ${outras}
-          </div>
-        </div>
-      </div>`;
+        ${atualHtml}
+        ${f.proximo ? `<div class="proximo">${ICONES.seta}<div><span class="meta">Próximo passo</span><strong>${esc(f.proximo.nome)}</strong>${f.proximo.responsaveis.length ? `<span class="meta">com ${esc(f.proximo.responsaveis.map(nomeCurto).join(', '))}</span>` : ''}</div></div>` : ''}
+        ${outras}
+      </section>`;
   }
 
-  function detalheProjeto(p) {
+  function gaveta(p) {
+    const a = p._atual;
     const abertas = p.frentes
       .filter((f) => f.situacao !== 'concluida')
-      .sort((a, b) => (b.id === p.frentePrincipal) - (a.id === p.frentePrincipal) || STATUS[a.status].ordem - STATUS[b.status].ordem || (b.atual?.diasParado ?? 0) - (a.atual?.diasParado ?? 0));
+      .sort((x, y) => (y.id === p.frentePrincipal) - (x.id === p.frentePrincipal) || STATUS[x.status].ordem - STATUS[y.status].ordem || (y.atual?.diasParado ?? 0) - (x.atual?.diasParado ?? 0));
     const concluidas = p.frentes.filter((f) => f.situacao === 'concluida');
+    const unica = p.frentes.length === 1;
+    const pct = p.progresso.total ? Math.round((p.progresso.feitas / p.progresso.total) * 100) : 0;
     return `
-      <div class="detalhe">
-        <div class="detalhe-topo">
-          ${/^https:\/\//.test(p.url ?? '') ? `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">Abrir quadro no Monday ${ICONES.externo.replace('<svg', '<svg style="width:13px;height:13px;vertical-align:-2px"')}</a>` : ''}
-          <span>Quadro: ${esc(p.quadro)}</span>
-          <span>Última movimentação no projeto: ${data(p.ultimaMovimentacao)} (${ha(p.diasSemMovimentacao)})</span>
+      <div class="veu" data-acao="fechar"></div>
+      <aside class="gaveta" role="dialog" aria-modal="true" aria-labelledby="gaveta-titulo">
+        <header class="gaveta-topo st-${p.status}">
+          <div>
+            ${pilula(p.status)}
+            <h2 id="gaveta-titulo">${esc(p.empresa)}</h2>
+            <p>${esc(p.tipo)} · entrou em ${data(p.entrada)} (${ha(p.diasDesdeEntrada)})</p>
+          </div>
+          <button type="button" class="fechar" data-acao="fechar" aria-label="Fechar">${ICONES.fechar}</button>
+        </header>
+        <div class="gaveta-corpo">
+          <div class="resumo">
+            <div><span>Parado há</span><strong class="num">${a ? dias(a.diasParado) : '—'}</strong></div>
+            <div><span>Progresso</span><strong class="num">${pct}%</strong></div>
+            <div><span>Última movimentação</span><strong>${dataCurta(p.ultimaMovimentacao)}</strong></div>
+          </div>
+          ${p.alertas.length ? `<div class="alertas">${p.alertas.map((al) => `<span>${ICONES.aviso}${esc(al.texto)}</span>`).join('')}</div>` : ''}
+          ${abertas.map((f) => blocoFrente(f, unica)).join('')}
+          ${!abertas.length ? concluidas.map((f) => blocoFrente(f, unica)).join('') : concluidas.length ? `<p class="concluidas">${ICONES.concluido}${plural(concluidas.length, 'frente concluída', 'frentes concluídas')}: ${concluidas.map((f) => esc(f.nome)).join(' · ')}</p>` : ''}
+          ${/^https:\/\//.test(p.url ?? '') ? `<a class="botao-monday" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">Abrir quadro no Monday ${ICONES.externo}</a>` : ''}
         </div>
-        <div class="frentes">
-          ${abertas.map((f) => blocoFrente(f, p.frentes.length > 1 && f.id === p.frentePrincipal)).join('')}
-          ${!abertas.length ? concluidas.map((f) => blocoFrente(f, false)).join('') : concluidas.length ? `<p class="concluidas">${plural(concluidas.length, 'frente concluída', 'frentes concluídas')}: ${concluidas.map((f) => esc(f.nome)).join(' · ')}</p>` : ''}
-        </div>
-      </div>`;
+      </aside>`;
+  }
+
+  function abrirGaveta(id) {
+    const p = projetoPorId(id);
+    if (!p) return;
+    tela.aberto = id;
+    const alvo = document.getElementById('camada');
+    alvo.innerHTML = gaveta(p);
+    document.body.classList.add('com-gaveta');
+    requestAnimationFrame(() => alvo.classList.add('visivel'));
+    alvo.querySelector('.fechar')?.focus();
+  }
+
+  function fecharGaveta() {
+    const alvo = document.getElementById('camada');
+    alvo.classList.remove('visivel');
+    document.body.classList.remove('com-gaveta');
+    const id = tela.aberto;
+    tela.aberto = null;
+    setTimeout(() => { if (!tela.aberto) alvo.innerHTML = ''; }, 250);
+    if (id) app.querySelector(`[data-acao="abrir"][data-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
   }
 
   // ---------- Renderização ----------
 
-  function renderizarLista() {
-    const lista = ordenar(filtrar(tela.painel.projetos));
-    const alvo = document.getElementById('lista');
-    const contagem = document.getElementById('contagem');
-    contagem.textContent = `${plural(lista.length, 'projeto', 'projetos')} ${tela.filtro.status === 'todos' ? 'no total' : 'exibidos'}`;
-    alvo.innerHTML = lista.length
-      ? cabecalhoLista() + lista.map(linhaProjeto).join('')
-      : `${cabecalhoLista()}<p class="vazio">Nenhum projeto com esses filtros.</p>`;
-  }
-
-  function sincronizar() {
+  function renderizarDinamico() {
     const f = tela.filtro;
-    document.getElementById('kpis').outerHTML = kpis(tela.painel);
-    document.getElementById('graficos').outerHTML = graficos(tela.painel);
-    for (const chip of app.querySelectorAll('.chip[data-acao="status"]')) {
-      chip.setAttribute('aria-pressed', String(chip.dataset.valor === f.status));
-    }
+    const painel = tela.painel;
+    document.getElementById('kpis').outerHTML = kpis(painel);
+    document.getElementById('esteira').outerHTML = esteira(painel);
+    document.getElementById('bloco-pessoas').innerHTML = pessoas(painel);
+
+    for (const chip of app.querySelectorAll('.chip[data-acao="status"]')) chip.setAttribute('aria-pressed', String(chip.dataset.valor === f.status));
     for (const sel of app.querySelectorAll('select[data-filtro]')) sel.value = f[sel.dataset.filtro];
-    const alterado = f.status !== 'ativos' || f.busca || f.pessoa || f.fase || f.tipo;
-    app.querySelector('[data-acao="limpar"]').hidden = !alterado;
-    renderizarLista();
+    app.querySelector('[data-acao="limpar"]').hidden = !filtroAtivo();
+
+    const resumo = document.getElementById('resumo-filtro');
+    resumo.hidden = !filtroAtivo();
+    resumo.innerHTML = filtroAtivo() ? `Filtro aplicado à esteira e à lista · <button type="button" data-acao="limpar">limpar</button>` : '';
+
+    const lista = ordenar(filtrar(painel.projetos));
+    document.getElementById('contagem').textContent = plural(lista.length, 'projeto', 'projetos');
+    document.getElementById('lista').innerHTML = cabecalhoLista() + (lista.length ? lista.map(linhaProjeto).join('') : '<p class="vazio">Nenhum projeto com esses filtros.</p>');
   }
 
   function iniciarPainel(painel) {
     prepararProjetos(painel);
     tela.painel = painel;
-    document.title = `${painel.titulo || 'Projetos Fiscais'} · Diretoria`;
+    document.title = `${painel.titulo || 'Projetos Fiscais'} · Painel executivo`;
     app.innerHTML = `
-      ${topo(painel)}
+      ${cabecalho(painel)}
       <main>
         ${avisoDesatualizado(painel)}
-        ${kpis(painel)}
-        <div class="secao">${graficos(painel)}</div>
-        <section class="secao" id="projetos" aria-labelledby="t-projetos">
+        <section class="secao">
           <div class="secao-cabecalho">
-            <h2 id="t-projetos">Onde está cada projeto</h2>
-            <p id="contagem"></p>
+            <div><h2>Esteira dos projetos</h2><p>Em que fase está cada projeto ativo · clique num card para ver os detalhes</p></div>
+            <p class="resumo-filtro" id="resumo-filtro" hidden></p>
           </div>
-          ${barraDeFiltros(painel)}
-          <div class="cartao lista" id="lista"></div>
+          ${esteira(painel)}
         </section>
-        <div class="secao duas-colunas">
+        <div class="grade-2">
+          ${gargalos(painel)}
+          <div id="bloco-pessoas">${pessoas(painel)}</div>
+        </div>
+        <section class="secao" id="projetos">
+          <div class="secao-cabecalho">
+            <div><h2>Todos os projetos</h2><p>Lista completa com filtros · <span id="contagem"></span></p></div>
+          </div>
+          <div class="cartao lista-cartao">
+            ${barraDeFiltros(painel)}
+            <div class="lista" id="lista"></div>
+          </div>
+        </section>
+        <div class="grade-2">
           ${entradasPorMes(painel)}
           ${comoLer(painel)}
         </div>
-        <p class="rodape">Fonte: Monday · quadros do workspace TAX - Consultivo · atualização automática</p>
-      </main>`;
+        <p class="rodape">Fonte: Monday · workspace TAX - Consultivo · atualização automática</p>
+      </main>
+      <div id="camada" class="camada"></div>`;
     ligarEventos();
-    sincronizar();
+    renderizarDinamico();
   }
 
   // ---------- Eventos ----------
-
-  function irParaLista() {
-    const alvo = document.getElementById('projetos');
-    if (alvo && alvo.getBoundingClientRect().top > window.innerHeight * 0.6) {
-      alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }
 
   function executar(acao, el) {
     const f = tela.filtro;
     switch (acao) {
       case 'status':
         f.status = f.status === el.dataset.valor && el.dataset.valor !== 'ativos' ? 'ativos' : el.dataset.valor;
-        if (el.classList.contains('kpi')) { f.pessoa = ''; irParaLista(); }
+        if (el.classList.contains('kpi')) f.pessoa = '';
         break;
       case 'pessoa':
         f.pessoa = f.pessoa === el.dataset.valor ? '' : el.dataset.valor;
         if (f.pessoa && f.status !== 'ativos' && f.status !== 'todos') f.status = 'ativos';
-        irParaLista();
-        break;
-      case 'fase':
-        f.fase = f.fase === el.dataset.valor ? '' : el.dataset.valor;
-        if (f.fase && f.status === 'concluido') f.status = 'ativos';
-        irParaLista();
         break;
       case 'limpar':
         Object.assign(f, { status: 'ativos', busca: '', pessoa: '', fase: '', tipo: '' });
@@ -684,18 +796,14 @@
           tela.ordem.campo === campo
             ? { campo, direcao: tela.ordem.direcao === 'desc' ? 'asc' : 'desc' }
             : { campo, direcao: campo === 'empresa' || campo === 'entrada' ? 'asc' : 'desc' };
-        renderizarLista();
-        return;
+        break;
       }
-      case 'alternar': {
-        const id = el.dataset.id;
-        if (tela.abertos.has(id)) tela.abertos.delete(id); else tela.abertos.add(id);
-        const artigo = el.closest('.projeto');
-        const p = tela.painel.projetos.find((x) => x.id === id);
-        artigo.outerHTML = linhaProjeto(p);
-        app.querySelector(`.linha-projeto[data-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+      case 'abrir':
+        abrirGaveta(el.dataset.id);
         return;
-      }
+      case 'fechar':
+        fecharGaveta();
+        return;
       case 'tema': {
         const proximo = TEMAS[(TEMAS.indexOf(temaAtual()) + 1) % TEMAS.length];
         guardar.gravar('localStorage', CHAVE_TEMA, proximo);
@@ -709,28 +817,24 @@
       default:
         return;
     }
-    sincronizar();
+    renderizarDinamico();
   }
 
   function ligarEventos() {
-    app.addEventListener('click', (ev) => {
+    document.addEventListener('click', (ev) => {
       if (ev.target.closest('a')) return;
       const el = ev.target.closest('[data-acao]');
-      if (el) executar(el.dataset.acao, el);
+      if (el && !el.disabled) executar(el.dataset.acao, el);
     });
-    app.addEventListener('keydown', (ev) => {
-      const el = ev.target.closest('.linha-projeto');
-      if (el && (ev.key === 'Enter' || ev.key === ' ')) {
-        ev.preventDefault();
-        executar('alternar', el);
-      }
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape' && tela.aberto) fecharGaveta();
     });
     app.addEventListener('change', (ev) => {
       const sel = ev.target.closest('select[data-filtro]');
       if (!sel) return;
       tela.filtro[sel.dataset.filtro] = sel.value;
       if (sel.value && tela.filtro.status === 'concluido' && sel.dataset.filtro !== 'tipo') tela.filtro.status = 'ativos';
-      sincronizar();
+      renderizarDinamico();
     });
     let espera;
     app.addEventListener('input', (ev) => {
@@ -738,12 +842,12 @@
       clearTimeout(espera);
       espera = setTimeout(() => {
         tela.filtro.busca = ev.target.value;
-        sincronizar();
+        renderizarDinamico();
       }, 120);
     });
   }
 
-  // Dica flutuante para barras, etapas e nomes.
+  // Dica flutuante.
   function posicionarDica(x, y) {
     const margem = 12;
     const { width, height } = dica.getBoundingClientRect();
@@ -768,7 +872,7 @@
     const alvo = ev.target.closest?.('[data-dica]');
     if (alvo && !alvo.contains(ev.relatedTarget)) dica.hidden = true;
   });
-  window.addEventListener('scroll', () => { dica.hidden = true; }, { passive: true });
+  window.addEventListener('scroll', () => { dica.hidden = true; }, { passive: true, capture: true });
 
   // ---------- Início ----------
 
