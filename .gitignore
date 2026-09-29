@@ -1,0 +1,9 @@
+# Saídas geradas — contêm dados de clientes e nunca devem ir para o repositório (ele é público)
+dist/
+previa/
+*.bruto.json
+coleta*.json
+
+node_modules/
+.env
+.DS_Store

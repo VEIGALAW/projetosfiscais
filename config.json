@@ -1,0 +1,42 @@
+{
+  "titulo": "Projetos Fiscais",
+  "subtitulo": "Levantamento de créditos fiscais e previdenciários · Veiga Partners",
+  "workspaceIds": [10908602],
+
+  "quadros": {
+    "excluirIds": [
+      18419617423,
+      18419617606,
+      9430543805,
+      18405812839,
+      18390182671,
+      9332119047,
+      18428385903,
+      18410784385,
+      18423199232
+    ],
+    "excluirNomes": [
+      "^Subelementos de",
+      "^Duplicata de",
+      "^Modelo\\b",
+      "^Old\\b"
+    ],
+    "excluirSeTiverColuna": ["Project Health (RAG)"],
+    "ajustes": {}
+  },
+
+  "limites": {
+    "atencaoAposDias": 7,
+    "criticoAposDias": 15,
+    "dadosDesatualizadosAposHoras": 30
+  },
+
+  "fases": [
+    { "id": "onboarding", "nome": "Onboarding", "padrao": "recepcion|solicitacao|procuracao|verificar documenta|lista de documentos|download|cruzamento|e-?social|\\bxml|darf|eventos|organizacao do projeto|definir datas|documentos fiscais" },
+    { "id": "analise", "nome": "Análise inicial", "padrao": "estudo|lousa|funil|check-?list|levantamento de informac" },
+    { "id": "diagnostico", "nome": "Diagnóstico", "padrao": "diagnostico|\\bwp|planejamento|mensura|revisao|tese|oportunidade|analise|levantamento de credito|consolidacao|insight|calculo|parecer|estrateg|cenario|reclassific" },
+    { "id": "entrega", "nome": "Entrega", "padrao": "diagnostico final|ajustes finais|reuniao interna|apresentacao|\\bppt|revisao final|parecer final|entrega do relatorio|marcar reuniao" },
+    { "id": "pos", "nome": "Pós-entrega", "padrao": "\\bhub\\b|apropriacao|\\bfup\\b|compensac|dcomp|acompanha|disponibiliz|habilitac|retificac|^atualizacoes" }
+  ],
+  "prioridadeDasFases": ["pos", "entrega", "analise", "onboarding", "diagnostico"]
+}

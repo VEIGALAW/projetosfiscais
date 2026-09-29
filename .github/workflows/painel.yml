@@ -1,0 +1,77 @@
+name: Atualizar painel
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # De hora em hora, das 7h às 20h de Brasília (UTC-3), de segunda a sexta
+    - cron: "5 10-23 * * 1-5"
+    # Uma vez por dia no fim de semana
+    - cron: "5 12 * * 0,6"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: painel-pages
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Testes
+        run: npm test
+
+      - name: Verificar segredos
+        id: segredos
+        env:
+          TOKEN: ${{ secrets.MONDAY_API_TOKEN }}
+          SENHA: ${{ secrets.DASHBOARD_PASSWORD }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$SENHA" ]; then
+            echo "::warning::Configure os secrets MONDAY_API_TOKEN e DASHBOARD_PASSWORD para atualizar o painel automaticamente."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Coletar do Monday e gerar o painel criptografado
+        if: steps.segredos.outputs.ok == 'true'
+        env:
+          MONDAY_API_TOKEN: ${{ secrets.MONDAY_API_TOKEN }}
+          DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+        run: node scripts/build.mjs
+
+      # Publica em gh-pages sempre como um único commit (sem histórico de dados antigos).
+      - name: Publicar no GitHub Pages
+        if: steps.segredos.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          git init -q -b gh-pages
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Atualiza painel"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" gh-pages
+
+  manter-agendamento:
+    # O GitHub desliga agendamentos de repositórios públicos após 60 dias sem commits;
+    # reativar o workflow pela API reinicia essa contagem.
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Manter o agendamento ativo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/painel.yml/enable"
