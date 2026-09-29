@@ -1,4 +1,5 @@
 :root {
+  --laranja-partners: #ce5600; /* laranja "Partners" do manual da marca */
   color-scheme: light;
   --pagina: #ebebeb;
   --papel: #ffffff;
@@ -194,7 +195,7 @@ h1, h2, h3, h4 { font-family: var(--titulo); font-weight: 300; letter-spacing: -
   padding: 56px; display: flex; flex-direction: column; justify-content: center; gap: 16px;
 }
 .acesso-marca { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: 0.02em; font-size: 15px; color: #000; }
-.acesso-lado::after, .heroi::after { content: "+"; position: absolute; font-weight: 300; line-height: 1; color: var(--grafismo); pointer-events: none; z-index: 0; }
+.acesso-lado::after, .heroi::after { content: "+"; position: absolute; font-weight: 300; line-height: 1; color: var(--laranja-partners); pointer-events: none; z-index: 0; }
 .acesso-lado::after { font-size: 520px; right: -90px; bottom: -150px; }
 .acesso-lado > * { position: relative; z-index: 1; }
 .acesso-marca .selo { display: none; }
@@ -229,7 +230,7 @@ h1, h2, h3, h4 { font-family: var(--titulo); font-weight: 300; letter-spacing: -
 }
 .marca { display: flex; align-items: center; gap: 14px; }
 .marca .selo { display: none; }
-.marca .mais-selo { font-weight: 300; font-size: 22px; line-height: 1; margin-right: -4px; }
+.marca .mais-selo { color: var(--laranja-partners); font-weight: 300; font-size: 22px; line-height: 1; margin-right: -4px; }
 .marca strong { display: block; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; color: var(--texto); }
 .marca span { display: block; font-size: 12.5px; color: var(--texto-3); }
 .topo-acoes { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; font-size: 12.5px; color: var(--texto-3); }
