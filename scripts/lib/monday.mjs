@@ -19,6 +19,7 @@ fragment CamposItem on Item {
   column_values {
     id type text
     ... on StatusValue { label index is_done updated_at }
+    ... on TimelineValue { from to }
   }
   updates(limit: 1) { text_body created_at creator { name } }
   subitems {
