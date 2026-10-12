@@ -12,7 +12,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { coletarDoMonday } from './lib/monday.mjs';
-import { montarPainel, quadroSelecionado } from './lib/transform.mjs';
+import { quadroSelecionado } from './lib/transform.mjs';
+import { montarPacote } from './lib/etapas.mjs';
 import { criptografar } from './lib/cripto.mjs';
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -50,6 +51,18 @@ export async function montarHtml(conteudoDados) {
   return saida;
 }
 
+// Fotos dos responsáveis: [{ pessoa, foto }] com data URIs. Vêm do secret FOTOS_JSON (JSON em base64)
+// ou de um fotos.json na raiz (ignorado pelo git — o repositório é público). Sem fotos, a página usa iniciais.
+async function lerFotos() {
+  let texto = null;
+  if (process.env.FOTOS_JSON) texto = Buffer.from(process.env.FOTOS_JSON.trim(), 'base64').toString('utf8');
+  else texto = await fs.readFile(path.join(RAIZ, 'fotos.json'), 'utf8').catch(() => null);
+  if (!texto) return [];
+  const fotos = JSON.parse(texto);
+  if (!Array.isArray(fotos)) throw new Error('fotos.json deve ser uma lista de { pessoa, foto }');
+  return fotos.filter((f) => f && typeof f.pessoa === 'string' && /^data:image\//.test(String(f.foto)));
+}
+
 async function main() {
   const args = lerArgumentos(process.argv.slice(2));
   const config = JSON.parse(await fs.readFile(path.join(RAIZ, 'config.json'), 'utf8'));
@@ -68,14 +81,14 @@ async function main() {
     console.log(`Coleta bruta salva em ${args.salvarBruto}`);
   }
 
-  const painel = montarPainel(bruto, config);
-  const ativos = painel.projetos.filter((p) => p.status !== 'concluido').length;
-  console.log(`${painel.projetos.length} projetos (${ativos} ativos).`);
+  const pacote = montarPacote(bruto, config);
+  pacote.fotos = await lerFotos();
+  console.log(`${pacote.quadros} quadros, ${pacote.etapas.length} etapas, ${pacote.fotos.length} fotos.`);
 
   if (args.previa) {
     const destino = args.saida ?? path.join(RAIZ, 'previa');
     await fs.mkdir(destino, { recursive: true });
-    await fs.writeFile(path.join(destino, 'index.html'), await montarHtml({ aberto: painel }));
+    await fs.writeFile(path.join(destino, 'index.html'), await montarHtml({ aberto: pacote }));
     console.log(`Prévia SEM senha gerada em ${destino}/index.html — não publique este arquivo.`);
     return;
   }
@@ -84,7 +97,7 @@ async function main() {
   if (senha.length < SENHA_MINIMA) {
     throw new Error(`Defina DASHBOARD_PASSWORD com pelo menos ${SENHA_MINIMA} caracteres.`);
   }
-  const cifrado = await criptografar(JSON.stringify(painel), senha);
+  const cifrado = await criptografar(JSON.stringify(pacote), senha);
 
   const destino = args.saida ?? path.join(RAIZ, 'dist');
   await fs.rm(destino, { recursive: true, force: true });
