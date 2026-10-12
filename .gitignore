@@ -3,6 +3,7 @@ dist/
 previa/
 *.bruto.json
 coleta*.json
+fotos.json
 
 node_modules/
 .env
