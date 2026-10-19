@@ -45,7 +45,7 @@ Monday (API) ──► GitHub Actions (de hora em hora) ──► página cripto
 1. **Token do Monday** — no Monday, clique na sua foto → *Developers* → *My access tokens* →
    copie o token. O painel enxerga os mesmos quadros que o dono do token; use a conta de alguém
    com acesso a todos os quadros do *TAX - Consultivo*.
-2. **Senha da diretoria** — escolha uma senha forte (mínimo de 12 caracteres; prefira uma frase
+2. **Senha da diretoria** — escolha a senha da diretoria (mínimo de 8 caracteres; quanto mais longa, mais segura — prefira uma frase
    longa). É ela que protege os dados publicados.
 3. No GitHub, em **Settings → Secrets and variables → Actions → New repository secret**, crie:
    - `MONDAY_API_TOKEN` — o token do passo 1

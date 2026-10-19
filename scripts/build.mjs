@@ -17,7 +17,7 @@ import { montarPacote } from './lib/etapas.mjs';
 import { criptografar } from './lib/cripto.mjs';
 
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SENHA_MINIMA = 12;
+const SENHA_MINIMA = 8;
 
 function lerArgumentos(argv) {
   const args = { previa: false, bruto: null, salvarBruto: null, saida: null };
